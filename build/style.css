@@ -1,0 +1,34 @@
+:root {
+  --accent-color: #ff8000;
+}
+
+* {
+  font-family: sans-serif;
+}
+
+.reference span{font-weight: bold}
+.reference span.score{color: green}
+.reference span{color: lightgray}
+
+.correctanswer {color: green; text-transform: uppercase;}
+.misconception {color: red; text-transform: uppercase;}
+
+div.question {margin-bottom: 100px;}
+.source {color:lightgray}
+
+.header{background-color: rgb(72, 26, 147); color:white; padding: 20px 10px 20px 10px}
+
+
+.line{
+  fill: none;
+  stroke: var(--accent-color);
+  stroke-width: 3px;
+}
+marker#cicle, marker#arrow {
+  fill: var(--accent-color);
+  stroke: var(--accent-color);
+}
+
+svg.linechart text{
+  font-family: "Arial Rounded MT Bold";
+}
