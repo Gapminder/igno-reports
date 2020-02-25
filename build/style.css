@@ -22,7 +22,7 @@ div.question {margin-bottom: 100px;}
 .line{
   fill: none;
   stroke: var(--accent-color);
-  stroke-width: 3px;
+  stroke-width: 8px;
 }
 marker#cicle, marker#arrow {
   fill: var(--accent-color);
@@ -31,4 +31,16 @@ marker#cicle, marker#arrow {
 
 svg.linechart text{
   font-family: "Arial Rounded MT Bold";
+}
+
+.x.axis text {
+  font-size: 20px;
+}
+.y.axis text {
+  font-size: 20px;
+}
+
+text.endvalue {
+  font-size: 40px;
+  fill: var(--accent-color);
 }

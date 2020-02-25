@@ -25,7 +25,7 @@ module.exports = {
     }),
     copy({
       targets: [{
-        src: ["index.html", "style.css", "libs/Vizabi.js", "./node_modules/save-svg-as-png/lib/saveSvgAsPng.js", "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js"],
+        src: ["index.html", "style.css", "./node_modules/save-svg-as-png/lib/saveSvgAsPng.js", "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js", "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js.map"],
         dest: "build"
       }]
     }),

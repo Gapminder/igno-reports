@@ -18543,21 +18543,31 @@
   const INSTRUCTIONS_KEY = "1OmmVh9M6Q-3Nb0Fy0xGyYsnDYQbl4fBCmvkCa_rdCf0";
   const INSTRUCTIONS_GRAPHS_SHEET = "graph_list";
   const INSTRUCTIONS_TEMPLATES_SHEET = "all_templates";
+  const INSTRUCTIONS_OPTIONS_SHEET = "options";
+  const INSTRUCTIONS_GEOS_SHEET = "all_geos";
 
-  const GRAPHS_URL = `https://docs.google.com/spreadsheets/d/${INSTRUCTIONS_KEY}/gviz/tq?tqx=out:csv&sheet=${INSTRUCTIONS_GRAPHS_SHEET}`;
-  const TEMPLATES_URL = `https://docs.google.com/spreadsheets/d/${INSTRUCTIONS_KEY}/gviz/tq?tqx=out:csv&sheet=${INSTRUCTIONS_TEMPLATES_SHEET}`;
-
+  function googleSheetLink(key, sheet){
+    return `https://docs.google.com/spreadsheets/d/${key}/gviz/tq?tqx=out:csv&sheet=${sheet}`;
+  }
 
   // fetch instructions
   let graphs = [];
   let templates = [];
+  let options = {};
+  let geos = [];
 
   const fetch_instructions = [
-    csv$1(GRAPHS_URL)
+    csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_GRAPHS_SHEET))
       .then(result => graphs = result)
       .catch(error => console.error(error)),
-    csv$1(TEMPLATES_URL)
+    csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_TEMPLATES_SHEET))
       .then(result => templates = result)
+      .catch(error => console.error(error)),
+    csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_OPTIONS_SHEET))
+      .then(result => result.forEach(kv => options[kv.key] = kv.value))
+      .catch(error => console.error(error)),
+    csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_GEOS_SHEET))
+      .then(result => geos = result)
       .catch(error => console.error(error))
   ];
 
@@ -18580,6 +18590,8 @@
     fetch_concept_props.push(v.conceptPromise);
   });
 
+
+
   // wait when all async stuff is complete 
   Promise.all(fetch_concept_props.concat(fetch_instructions)).then(result => {
     
@@ -18594,16 +18606,19 @@
       } else {
       
         data_sources[dataset].reader
-          .read({select: {key: ["country", "time"], value: [indicator]}, where: {country: {"$in": [graph.geo_id]}}, from: "datapoints"})
+          .read({select: {key: ["geo", "time"], value: [indicator]}, where: {country: {"$in": [graph.geo_id]}}, from: "datapoints"})
           .then(data => {
             makeLinechart({
               indicator: indicator, 
               geo: graph.geo_id, 
               data: data, 
               svg: view, 
-              conceptProps: data_sources[dataset].concepts.find(c => c.concept == indicator)
+              geoProps: geos.find(f => f.geo_id == graph.geo_id),
+              conceptProps: data_sources[dataset].concepts.find(c => c.concept == indicator),
+              template: templates.find(f => f.template_id == graph.id.split("_")[0]),
+              options
             });
-            //saveSvgAsPng(view.node(), graph.id + ".png");
+            if(options.download === "on") saveSvgAsPng(view.node(), graph.id + ".png");
           })
           .catch(error => console.error(error));
       }
@@ -18619,10 +18634,10 @@
 
 
 
-  function makeLinechart({indicator, geo, data, svg, conceptProps}){
-    const MARGIN = {top: 30, right: 20, bottom: 50, left: 50};
-    const WIDTH = 320 - MARGIN.left - MARGIN.right;
-    const HEIGHT = 240 - MARGIN.top - MARGIN.bottom;  
+  function makeLinechart({indicator = "", geo = "", data = [], svg, geoProps = {}, conceptProps = {}, template = {}, options = {}}){
+    const MARGIN = {top: 50, right: 50, bottom: 50, left: 75};
+    const WIDTH = 640 - MARGIN.left - MARGIN.right;
+    const HEIGHT = 480 - MARGIN.top - MARGIN.bottom;  
     
     svg
       .attr("width", WIDTH + MARGIN.left + MARGIN.right + "px")
@@ -18631,21 +18646,21 @@
     if (!data.length) {
       svg.append("text")
         .attr("dy", "20px")
-        .text(`EMPTY DATA for ${indicator} and ${geo}`).style("fill", "red");
+        .text(`EMPTY DATA for ${template["template short name"]} and ${geo}`).style("fill", "red");
       
     } else {
       
-      
+      const PERCENT = template["template short name"].includes("%");
+      const formatter = (d) => (format(".2~s")(d) + (PERCENT?"%":""));
       
       svg.append("svg:defs").append("svg:marker")
         .attr("id", "arrow")
         .attr("viewBox", "0 -5 10 10")
-        //.attr('refX', -20)//so that it comes towards the center.
         .attr("markerWidth", 5)
         .attr("markerHeight", 5)
         .attr("orient", "auto")
         .append("svg:path")
-        .attr("d", "M0,-5L10,0L0,5");
+        .attr("d", "M0,-3L7,0L0,3");
       
       svg.append("svg:defs").append("svg:marker")
         .attr("id", "cicle")
@@ -18654,22 +18669,21 @@
         .attr("markerHeight", 5)
         .attr("orient", "auto")
         .append("svg:circle")
-        .attr("r", 4)
+        .attr("r", 3)
         .attr("x0", 0)
         .attr("y0", 0);
       
       const g = svg.append("g")
         .attr("transform", "translate(" + MARGIN.left + "," + MARGIN.top + ")");
       
-      g.append("text").text(conceptProps.name);
-      
+      if(options["chart title"] === "on") g.append("text").attr("dy","-10px").text(conceptProps.name + " in " + geoProps.name);
       
       var xScale = time()
         .domain(extent(data.map(m => m.time)))
         .range([0, WIDTH]);
       
-      var yScale = time()
-        .domain(extent(data.map(m => m[indicator])))
+      var yScale = linear$2()
+        .domain(PERCENT ? [0,100] : extent(data.map(m => m[indicator])))
         .range([HEIGHT, 0]);
       
       var line$1 = line()
@@ -18680,11 +18694,11 @@
       g.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + HEIGHT + ")")
-        .call(axisBottom(xScale).ticks(5));
+        .call(axisBottom(xScale).ticks(5).tickSizeOuter(0));
       
       g.append("g")
         .attr("class", "y axis")
-        .call(axisLeft(yScale).tickFormat(format("~s"))); 
+        .call(axisLeft(yScale).tickFormat(formatter).ticks(5).tickSizeOuter(0)); 
       
       g.append("path")
         .datum(data) 
@@ -18693,6 +18707,18 @@
         .attr("class", "line") 
         .attr("d", line$1);
       
+      const endTime = max(xScale.domain());
+      const endValue = data.find(f => f.time - endTime == 0)[indicator];
+      const upperHalf = yScale(endValue) < HEIGHT/2;
+      
+      g.append("text")
+        .attr("class", "endvalue")
+        .attr("text-anchor", "end")
+        .attr("dy", upperHalf? "50px" : "-30px")
+        .attr("dx", MARGIN.right)
+        .attr("x", xScale(endTime))
+        .attr("y", yScale(endValue))
+        .text(formatter(endValue));
       
       
     }
