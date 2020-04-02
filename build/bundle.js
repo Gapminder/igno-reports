@@ -18033,7 +18033,7 @@
 
 
 
-  var d3 = /*#__PURE__*/Object.freeze({
+  var d3$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     version: version,
     bisect: bisectRight,
@@ -18537,8 +18537,672 @@
     zoomIdentity: identity$9
   });
 
-  window.d3 = d3;
+  function format$1(style) {
+    return function(d){
+      
+      if(isNaN(d)) return d;
+      
+      let suffix = "";
+      if (style == "PERCENT") {
+        suffix = "%";
+      }
+      else if (style == "SHARE"){
+        d = d*100;
+        suffix = "%";
+      }
+
+      return d3.format(".2~s")(d) + suffix;
+    }
+  }
+
+  function makeLinechart({view, graph={}, data_sources={}, geo="", template="", igno = {}, options}){
+
+    const svg = view.append("svg").attr("class", "linechart");
+
+    const indicator = graph.indicator.split("@")[0];
+    const dataset = graph.indicator.split("@")[1];
+    
+    return new Promise((resolve, reject) => {
+    
+      if(!data_sources[dataset]) {
+        reject(`Dataset ${dataset} is not listed`);
+      } else {
+
+        data_sources[dataset].reader
+          .read({select: {key: ["geo", "time"], value: [indicator]}, where: {country: {"$in": [graph.geo_id]}}, from: "datapoints"})
+          .then(data => {
+            linechart({
+              indicator, 
+              geo: graph.geo_id, 
+              data, 
+              svg, 
+              geoProps: geo,
+              conceptProps: data_sources[dataset].concepts.find(c => c.concept == indicator),
+              template,
+              igno,
+              options
+            });
+            resolve(svg);
+          })
+          .catch(error => console.error(error));
+      }
+    
+    });
+
+    
+  }
+
+
+  function linechart({indicator = "", geo = "", data = [], svg, geoProps = {}, conceptProps = {}, template = {}, igno = {}, options = {}}){
+    const MARGIN = {top: 50, right: 200, bottom: 50, left: 75};
+    const WIDTH = 640 - MARGIN.left - MARGIN.right;
+    const HEIGHT = 480 - MARGIN.top - MARGIN.bottom;  
+    
+    svg
+      .attr("width", WIDTH + MARGIN.left + MARGIN.right + "px")
+      .attr("height", HEIGHT + MARGIN.top + MARGIN.bottom + "px");
+    
+    if (!data.length) {
+      svg.append("text")
+        .attr("dy", "20px")
+        .text(`EMPTY DATA for ${template["template short name"]} and ${geo}`).style("fill", "red");
+      
+    } else {
+      
+      const PERCENT = template["template short name"].includes("%");
+      let formatter = format$1(PERCENT? "PERCENT" : "");
+      
+      svg.append("svg:defs").append("svg:marker")
+        .attr("id", "arrow")
+        .attr("viewBox", "-10 -7 12 12")
+        .attr("markerWidth", 5)
+        .attr("markerHeight", 5)
+        .attr("orient", "auto")
+        .append("svg:path")
+        .attr("d", "M-7,-4L1,0L-7,4");
+      
+      svg.append("svg:defs").append("svg:marker")
+        .attr("id", "cicle")
+        .attr("viewBox", "-5 -5 12 12")
+        .attr("markerWidth", 5)
+        .attr("markerHeight", 5)
+        .attr("orient", "auto")
+        .append("svg:circle")
+        .attr("r", 3)
+        .attr("x0", 0)
+        .attr("y0", 0);
+      
+      const g = svg.append("g")
+        .attr("transform", "translate(" + MARGIN.left + "," + MARGIN.top + ")");
+      
+      if(options["chart title"] === "on") g.append("text").attr("dy","-10px").text(conceptProps.name + " in " + geoProps.name);
+      
+      function domainBump(domain){
+        const bump = parseInt(d3.timeYear.count(domain[0], domain[1]) / 10);
+        return [d3.timeYear.offset(domain[0], -bump), d3.timeYear.offset(domain[1], bump)];
+      }
+      
+      var xScale = d3.scaleTime()
+        .domain(domainBump(d3.extent(data.map(m => m.time))))
+        .range([0, WIDTH]);
+      
+      var yScale = d3.scaleLinear()
+        .domain(PERCENT ? [0,100] : d3.extent(data.map(m => m[indicator])))
+        .range([HEIGHT, 0]);
+      
+      var line = d3.line()
+        .x(function(d) { return xScale(d.time); }) // set the x values for the line generator
+        .y(function(d) { return yScale(d[indicator]); }) // set the y values for the line generator 
+        .curve(d3.curveLinear);
+      
+      g.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + HEIGHT + ")")
+        .call(d3.axisBottom(xScale).ticks(5).tickSizeOuter(0));
+      
+      g.append("g")
+        .attr("class", "y axis")
+        .call(d3.axisLeft(yScale).tickFormat(formatter).ticks(5).tickSizeOuter(0)); 
+      
+      g.append("path")
+        .datum(data) 
+        .attr('marker-start', (d) => "url(#cicle)")//attach the arrow from defs
+        .attr('marker-end', (d) => "url(#arrow)")//attach the arrow from defs
+        .attr("class", "line") 
+        .attr("d", line);
+      
+      
+      function addReference({view, text, cssClass, yValue}) {
+        
+        let y = yScale(yValue);
+      
+        view.append("line")
+          .attr("class", "option " + cssClass)
+          .attr("x1", WIDTH)
+          .attr("x2", WIDTH + MARGIN.right)
+          .attr("y1", y)
+          .attr("y2", y);
+        
+        view.append("text")
+          .attr("class", "option " + cssClass)
+          .attr("text-anchor", "end")
+          .attr("dy", -5)
+          .attr("dx", -4)
+          .attr("x", WIDTH + MARGIN.right)
+          .attr("y", y)
+          .text(text);
+      }
+      
+      if (d3.keys(igno).length) {
+        addReference({view: g, text: "Correct", cssClass: "correct", yValue: igno[igno.correct] * (PERCENT ? 100 : 1)});
+        addReference({view: g, text: "Wrong", cssClass: "wrong", yValue: igno[igno.wrong] * (PERCENT ? 100 : 1)});
+        addReference({view: g, text: "Very wrong", cssClass: "vwrong", yValue: igno[igno["very wrong"]] * (PERCENT ? 100 : 1)});
+      }
+      
+      const endTime = d3.max(data.map(m => m.time));
+      const endValue = data.find(f => f.time - endTime == 0)[indicator];
+      const upperHalf = yScale(endValue) < HEIGHT/2;
+      
+      g.append("text")
+        .attr("class", "endvalue")
+        .attr("text-anchor", "start")
+        .attr("dy", upperHalf? "50px" : "-30px")
+        .attr("dx", 0)
+        .attr("x", xScale(endTime))
+        .attr("y", yScale(endValue))
+        .text(formatter(endValue));
+    }
+
+  }
+
+  function makeSummary({view, geo_id, template_id, geos, templates, ignos, options}){
+
+    const content = view.append("div").attr("class", "summary");
+    const width = view.node().clientWidth;
+    
+    function getTemplateQuestion(igno) {
+      return templates.find(f => f.template_id == igno["clean id"].split("_")[0]);
+    }
+    
+
+    let data = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id) && getTemplateQuestion(f));
+    
+
+    
+    let table = content.append("table");
+    
+    table.append("th").text("Question");
+    table.append("th").text("Right");
+    table.append("th").text("Wrong");
+    table.append("th").text("Very wrong");
+    
+    
+    
+    table.selectAll("tr").data(data).enter()
+      .append("tr").each(function(igno, i){
+      
+        const template = getTemplateQuestion(igno) || {};
+      
+        let formatRef = format$1("SHARE");
+        let formatCorrectAns = format$1(template["template short name"].includes("%")? "SHARE":""); //🌶
+        
+      
+        const view = d3.select(this);
+        let td1 = view.append("td");
+        td1.append("span").attr("class", "question-text").text((i+1) + ". " + igno.question);
+        td1.append("span").attr("class", "correct-answer").text("Correct: " + formatCorrectAns(igno[igno.correct]));
+      
+        let scale = d3.scaleLinear().domain([0, 1]).range([0, width/4]);
+      
+        let td2 = view.append("td");
+        td2.append("div").attr("class", "bar correct")
+          .style("width", scale(igno["ref1_correct"]) + "px");
+        td2.append("div").attr("class", "text correct")
+          .text(formatRef(igno["ref1_correct"]));
+      
+        let td3 = view.append("td");
+        td3.append("div").attr("class", "bar wrong")
+          .style("width", scale(igno["ref1_wrong"]) + "px");
+        td3.append("div").attr("class", "text correct")
+          .text(formatRef(igno["ref1_wrong"]));
+      
+        let td4 = view.append("td");
+        td4.append("div").attr("class", "bar vwrong")
+          .style("width", scale(igno["ref1_verywrong"]) + "px");
+        td4.append("div").attr("class", "text correct")
+          .text(formatRef(igno["ref1_verywrong"]));
+      
+      
+      });
+
+    
+    return Promise.resolve(content);
+  }
+
+  const GLOBAL_GOALS_COLORS = [
+    "#000000",
+    "#e5243b",
+    "#DDA63A",
+    "#4C9F38",
+    "#C5192D",
+    "#FF3A21",
+    "#26BDE2",
+    "#FCC30B",
+    "#A21942",
+    "#FD6925",
+    "#DD1367",
+    "#FD9D24",
+    "#BF8B2E",
+    "#3F7E44",
+    "#0A97D9",
+    "#56C02B",
+    "#00689D",
+    "#19486A"
+  ];
+
+  const GLOBAL_GOALS_ICONS = [
+    "",
+    "E-WEB-Goal-01.png",
+    "E-WEB-Goal-02.png",
+    "E-WEB-Goal-03.png",
+    "E-WEB-Goal-04.png",
+    "E-WEB-Goal-05.png",
+    "E-WEB-Goal-06.png",
+    "E-WEB-Goal-07.png",
+    "E-WEB-Goal-08.png",
+    "E-WEB-Goal-09.png",
+    "E-WEB-Goal-10.png",
+    "E-WEB-Goal-11.png",
+    "E-WEB-Goal-12.png",
+    "E-WEB-Goal-13.png",
+    "E-WEB-Goal-14.png",
+    "E-WEB-Goal-15.png",
+    "E-WEB-Goal-16.png",
+    "E-WEB-Goal-17.png"
+  ];
+
+  const UISTRINGS = {
+    aChimpWouldGet: "A chimp would get 33% right on this question by just picking A, B or C randomly.",
+    correctAnswer: "Correct answer",
+    misconception: "Misconception",
+    source: "Source"
+  };
+
+  const TEMPLATE1 = {
+    title: "FLIP YOUR WORLDVIEW",
+    columns: [{
+      header: "IT IS",
+      content: `Most of us do not have an updated understanding about the World we live in. In the news we see over dramatic imagery – we see disasters, wars and natural disasters. Rarely, we see anything about everyday life and slow progress. <br/>
+    Together with Gapminder Foundation we have locked for systematic misunderstandings about all countries. In this report, we will reveal the results. Hopefully it will give you some meaningful insights about how your country is being perceived by others and hopefully you find ways to use these insights in a meaningful way.`,
+      image: ""
+    },{
+      header: "WHY ITS DONE",
+      content: `We truly believe that by identifying how your country is being systematically misunderstood, you can make sure you address it in your pavilion, so that people will not leave expo without getting rid of the worst misconceptions about your country. <br/>
+    We are all here to explore, learn and maybe even start working together. So could there be a better starting point than actually making sure that we help people rid themselves of the misconceptions about our country as well as we rid ourselves of the misconceptions about theirs?`,
+      image: ""
+    }]
+  };
+
+  const TEMPLATE2 = {
+    title: "THE PROJECT",
+    columns: [{
+      header: "METHOD",
+      content: `For each country, Gapminder created a lot of ABC questions based on data from official data providers. The questions span over all UN Global Goals and  These questions were tested in Google Survey on 150 people in UK. The questions where people answered worse than random (ie less than 33% correct) we kept and asked in 4 more countries. We ask a total of 600 people.  <br/>
+    In this report we present 6 of these questions where people were generally pretty bad.`,
+      image: "E_SDG_logo_without_UN_emblem_horizontal_Transparent_WEB.png",
+    },{
+      header: "GAPMINDER",
+      content: `Gapminder Foundation is an independent non-profit in Sweden who in their project Flip Your Worldview reveals systematic misconceptions about the World. Gapminder does it by constructing and asking basic fact questions to lots of people. Together with Expo Dubai, Gapminder have done this study to find general misunderstandings about your country ( and all others). The study is based on the global bestseller Factfulness (written by Gapminders co-founders Ola Rosling, Anna Rosling Rönnlund and Hans Rosling). To learn more about  the World and how we are wrong about it, we recommend getting a copy of Factfulness.`,
+      image: ""
+    }]
+  };
+
+  const TEMPLATE3 = {
+    title: "HOW TO USE THE STUDY",
+    columns: [{
+      header: "",
+      content: `When we have tested all countries participating at the Expo Dubai, we found that there is big ignorance about all countries. We think we know the World around us, but often we are not updated, and often we have missed slow positive progress, that over time adds up to big change. <br/>
+    Most likely the visitors at Expo Dubai will have the same kind of misconception as the general public. Therefor, Expo Dubai is a great chance to make sure you remove the ignorance about your country that might have people hesitate to select your country for tourism, investments and collaborations. Help people realize you are doing better than most people think! <br/><br/>
+
+    Use this study to spark meaningful conversations and integrate relevant questions in your pavilion exhibition. When visitors end up in line outside your pavilion, have them do the test to keep busy.`,
+      image: "",
+    },{
+      header: "",
+      content: `And dont forget to share this study with media in your country, let them know that they can share these results and also test their readers/viewers. To spark interest about your pavilion and get your users active, add tesat questions in your social media channels. And hey, dont miss to test the people working in your pavilion, to ensure they are not wrong about your country!. <br/> <br/>
+    
+    And, make sure you are not getting the questions about your country correct, but also the questions about the countries you have relations to…`,
+      image: ""
+    }]
+  };
+
+  const TEMPLATE4 = {
+    title: "CONTACT",
+    columns: [{
+      header: "",
+      content: `Want to know more about the how this study is being  integrated into the EXPO experience, please contact info@expodubai.com <br/> <br/>
+
+    If there are any issues of how the data is being displayed throughout the site, please contact info@expodubai.com`,
+      image: "",
+    },{
+      header: "",
+      content: `Questions about Gapminder, the data and the methodology, contact  info@gapminder.org. <br/> <br/>
+
+    If you want to get more or similar studies about your country, your company please contact studies@gapminder.org. <br/> <br/>
+
+    If you want to get tailored courses, workshops, lectures or certifications at your school, company or organisation, please contact education@gapminder.org.`,
+      image: ""
+    }]
+  };
+
+
+  function makeReport({geo_id="", template_id="", ignos=[], view, graphs, geos, templates, data_sources, options}){
+
+    
+    let data = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id));
+    
+    let content = view.append("div").attr("class", "report");
+    content
+      .append("div").attr("class","section")
+      .append("div").attr("class","cover page").each(function(){
+        makeReportCover({view: d3.select(this), geo_id, template_id, geos, templates});
+      });
+    
+    if (!template_id) content
+      .append("div").attr("class","section")
+      .append("div").attr("class","template page").each(function(){
+        makeReportTemplatePage({view: d3.select(this), pagenum: 2, content: TEMPLATE1});
+      });  
+    if (!template_id) content
+      .append("div").attr("class","section")
+      .append("div").attr("class","template page").each(function(){
+        makeReportTemplatePage({view: d3.select(this), pagenum: 3, content: TEMPLATE2});
+      });
+
+    content
+      .append("div").attr("class","section").selectAll("div").data(data).enter()
+      .append("div").attr("class","question page").each(function(igno, index){
+        let geo = geos.find(f => f.geo_id == igno.geo);
+        let template = templates.find(f => f.template_id == igno.template);
+        let graph = null; //graphs.find(f => f.id == igno["clean id"])
+        makeReportSegmant({view: d3.select(this), igno, graph, geo, template, data_sources, options, index, pagenum: index + 4});
+      });
+    
+    
+    content
+      .append("div").attr("class", "section")
+      .append("div").attr("class", "summary page").each(function(){
+        makeSummary({view: d3.select(this), geo_id, template_id, geos, templates, ignos, options});
+      }); 
+    
+    if (!template_id) content
+      .append("div").attr("class","section")
+      .append("div").attr("class","template page").each(function(){
+        makeReportTemplatePage({view: d3.select(this), pagenum: data.length + 5, content: TEMPLATE3});
+      });
+    if (!template_id) content
+      .append("div").attr("class","section")
+      .append("div").attr("class","template page").each(function(){
+        makeReportTemplatePage({view: d3.select(this), pagenum: data.length + 6, content: TEMPLATE4});
+      });
+      
+
+    
+    return Promise.resolve(content);
+    
+  }
+
+
+  function getWhat({geo_id, template_id, geos, templates}){
+    let what = "";
+    if (template_id){
+      let template = templates.find(f => f.template_id == template_id) || {};
+      what = template["template short name"] || template_id;
+    } else if (geo_id) {
+      let geo = geos.find(f => f.geo_id == geo_id) || {};
+      what = geo.name || geo_id;
+    }
+    return what;
+  }
+
+  function makeReportCover({view, geo_id, template_id, geos, templates}){
+    let what = getWhat({geo_id, template_id, geos, templates});
+    
+    view
+      .style("background-image", "url('./assets/images/back.png')");
+    
+    view
+      .append("div")
+      .attr("class", "logo")
+      .style("background-image", "url('./assets/images/flip.png')");
+    
+    view
+      .append("div")
+      .attr("class", "pretitle")
+      .html(`What do people know about ${what}? <br> We asked...`);
+    
+    view
+      .append("div")
+      .attr("class", "title")
+      .text(what);
+    
+    view
+      .append("div")
+      .attr("class", "subtitle")
+      .text("A study conducted by Gapminder Foundation for Expo Dubai"); 
+  }
+
+  function makeReportTemplatePage({view, pagenum, content}){
+    view
+      .style("background-image", "url('./assets/images/back.png')");
+    
+    view
+      .append("div")
+      .attr("class", "logo")
+      .style("background-image", "url('./assets/images/flip.png')");
+    
+    if(content.title) view
+      .append("div")
+      .attr("class", "title")
+      .html(content.title);
+    
+    view.selectAll(".column")
+      .data(content.columns)
+      .enter().append().append("div")
+      .attr("class", (d,i)=>`column column${i}`)
+      .each(function(column){
+        const view = d3.select(this);
+      
+        if(column.header) view
+          .append("div")
+          .attr("class", "header")
+          .text(column.header);
+      
+        if(column.content) view
+          .append("div")
+          .attr("class", "content")
+          .html(column.content);
+      
+        if(column.image) view
+          .append("div")
+          .attr("class", "image")
+          .style("background-image", `url('./assets/images/${column.image}')`);
+      });
+    
+      
+    view
+      .append("div")
+      .attr("class", "pagenum")
+      .text(pagenum);
+  }
+                              
+  function makeReportSegmant({view, pagenum, igno={}, graph, geo={}, template, data_sources, options, index}){
+    
+     
+    igno.ungoal = parseInt(1 + Math.random()*16);
+    igno.correctShort = "Longer lives in Rwanda";
+    igno.correctLong = "In Rwanda life expectancy is now 68 and it has been raising steadily over the last 20 years. Back in year 2000, it was only 50 years. But when we tested 600 people in four countries, few people got this question right..";
+    
+    igno.discussion = "Only 25% of the people answering got knew the correct answer. Most underestimated the length of lives In Rwanda a lot (no country today have a life expectancy of only 42…).  Just like in most of Africa, people seem to have missed the slow positive progress happening in many different areas of the society.";
+    
+    igno.legend = {correct: 0, wrong: 1, verywrong: 2};
+    igno.answers = [
+      {name: "zero", 
+       answers: [0, igno.ref1_wrong, igno.ref1_verywrong],
+       samplesize: 150
+      },
+      {name: "UK", 
+       answers: [igno.ref1_correct, igno.ref1_wrong, igno.ref1_verywrong],
+       samplesize: 150
+      },
+      {name: "fake", 
+       answers: [0.5, igno.ref1_wrong, igno.ref1_verywrong],
+       samplesize: 150
+      },
+      {name: "data", 
+       answers: [1, igno.ref1_wrong, igno.ref1_verywrong],
+       samplesize: 150
+      }
+    ];
+    
+    let formatRef = format$1("SHARE");
+    let formatAns = format$1(template["template short name"].includes("%")? "SHARE":""); //🌶
+    
+    
+    
+    
+    const header = view.append("div").attr("class","header");
+    
+    if(igno.ungoal) header.append("div")
+      .attr("class", "ungoal-icon")
+      .style("background-image", `url('./assets/images/${GLOBAL_GOALS_ICONS[igno.ungoal]}')`);
+    
+    if(igno.ungoal) header
+      .style("background-color", GLOBAL_GOALS_COLORS[igno.ungoal]);
+    
+    header.append("div")
+      .attr("class", "pretitle")
+      .html(`${geo.name} question ${index + 1}`);
+    
+    header.append("div")
+      .attr("class", "title")
+      .html(igno.question);
+    
+    if(igno["answer type"]=="text"){
+      header.append("div").attr("class", "options").html(`
+      <div><span>A.</span> <span>${formatAns(igno.a1)}</span></div>
+      <div><span>B.</span> <span>${formatAns(igno.a2)}</span></div>
+      <div><span>C.</span> <span>${formatAns(igno.a3)}</span></div>
+    `);
+    } else if(igno["answer type"]=="image"){
+      header.append("div").html("Answer images are not supported yet");
+    } else {
+      header.append("div").html("Unknown question type. Try 'text' or 'image'");
+    }
+    
+    header.append("div")
+      .attr("class","source")
+      .html(`${UISTRINGS.source}: ${igno["data source name"]}`);
+    
+    
+    const discussion = view.append("div").attr("class","discussion");
+
+    discussion.append("div")
+      .attr("class","title")
+      .html(igno.correctShort);
+    
+    discussion.append("div")
+      .attr("class","text1")
+      .html(igno.correctLong);
+    
+    discussion.append("div")
+      .attr("class","label-pctcorrect")
+      .html("Percent answering correct");
+    
+    let chart = discussion.append("div")
+      .attr("class","answers-chart");
+    
+    chart.selectAll("row").data(igno.answers).enter().append("div")
+      .attr("class", "row")
+      .each(function(d){
+        const view = d3.select(this);
+        const correct = d.answers[igno.legend.correct];
+      
+        view.append("div").attr("class", "name").text(d.name);
+        let scale = view.append("div").attr("class", "scale");
+      
+        scale.selectAll(".tick").data(Array(11)).enter().append("div")
+          .attr("class", "tick")
+          .style("left", (_, i)=>(i*10+"%"));
+      
+        scale.append("div")
+          .attr("class", "bar")
+          .style("width", correct * 100 + "%");
+      
+        let value = scale.append("div")
+          .attr("class", "value")
+          .text(formatRef(correct));
+      
+        if(correct < 0.1) value
+          //.style("color", )
+          .style("text-shadow", "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff")
+          .style("text-align", "left")
+          .style("left", correct * 100 + "%");
+      
+        if(correct >= 0.1) value
+          .style("color", "white")
+          .style("text-align", "right")
+          .style("right", (1-correct) * 100 + "%");
+      });
+    
+    let labels = chart.append("div")
+      .attr("class", "row");
+    labels.append("div")
+      .attr("class", "name");
+    labels.append("div")
+      .attr("class", "scale")
+      .selectAll(".tick").data(Array(11)).enter().append("div")
+      .attr("class", "tick-label")
+      .style("left", (_, i)=>(i*10-4+"%"))
+      .text((_, i)=>(i*10+"%"));
+    
+    discussion.append("div")
+      .attr("class","text2")
+      .html(igno.discussion);
+    
+    discussion.append("div")
+      .attr("class","logo")
+      .style("background-image", "url('./assets/images/flip.png')");
+    
+    discussion.append("div")
+      .attr("class","pagenum")
+      .text(pagenum);
+    
+    
+  //  if(graph) makeLinechart({view: discussion.append("div"), graph, data_sources, geo, template, igno, options});
+    
+  //  discussion.append("p").html(igno["expanded answer text"] + ` Only ${ref1_correct} in ${igno.ref1} got it right. ` + UISTRINGS.aChimpWouldGet)
+  //  const table = discussion.append("table").attr("class","reference");
+  //  table.append("tr").html(`<td>${igno.ref1}:</td>
+  //    <td>
+  //      <span class='score correct'>${Array(parseInt(ref1_correct)).join("|")}</span><span class='score wrong'>${Array(parseInt(ref1_wrong)).join("|")}</span><span class='score vwrong'>${Array(parseInt(ref1_vwrong)).join("|")}</span>
+  //      <span class='score correct'>${ref1_correct}</span> 
+  //    </td>`);
+  //  table.append("tr").html(`<td>Chimps</td>
+  //    <td>
+  //      <span class='score correct'>${Array(33).join("|")}</span><span class='score wrong'>${Array(33).join("|")}</span><span class='score vwrong'>${Array(33).join("|")}</span>
+  //      <span class='score correct'>${"33%"}</span> 
+  //    </td>`);
+  //  discussion.append("p").attr("class","misconception").html(UISTRINGS.misconception);
+  //  discussion.append("p").html(igno["why wrong text"]);
+    
+    
+  }
+
+  window.d3 = d3$1;
   window.saveSvgAsPng = saveSvgAsPng;
+
+  const QUESTIONS_KEY = "115e3rQgfs96MwkrjN9Hh7GJQVHylng7QzBhgF5FFArw";
+  const QUESTIONS_IGNOS_SHEET = "Ignos";
 
   const INSTRUCTIONS_KEY = "1OmmVh9M6Q-3Nb0Fy0xGyYsnDYQbl4fBCmvkCa_rdCf0";
   const INSTRUCTIONS_GRAPHS_SHEET = "graph_list";
@@ -18550,11 +19214,28 @@
     return `https://docs.google.com/spreadsheets/d/${key}/gviz/tq?tqx=out:csv&sheet=${sheet}`;
   }
 
+  function getUrlParams(search = window.location.search) {
+      const hashes = search.slice(search.indexOf('?') + 1).split('&');
+      const params = {};
+      hashes.map(hash => {
+          const [key, val] = hash.split('=');
+          if(key) params[key] = decodeURIComponent(val);
+      });
+      return params
+  }
+
+  function setUrlParams(kv){
+    let v = values(kv);
+    window.location.search = keys(kv).map((k,i) => k + "=" + v[i]).join("&");
+    
+  }
+
   // fetch instructions
   let graphs = [];
   let templates = [];
   let options = {};
   let geos = [];
+  let ignos = [];
 
   const fetch_instructions = [
     csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_GRAPHS_SHEET))
@@ -18568,6 +19249,9 @@
       .catch(error => console.error(error)),
     csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_GEOS_SHEET))
       .then(result => geos = result)
+      .catch(error => console.error(error)),
+    csv$1(googleSheetLink(QUESTIONS_KEY, QUESTIONS_IGNOS_SHEET))
+      .then(result => ignos = result)
       .catch(error => console.error(error))
   ];
 
@@ -18595,135 +19279,153 @@
   // wait when all async stuff is complete 
   Promise.all(fetch_concept_props.concat(fetch_instructions)).then(result => {
     
-    graphs.forEach(graph => {
-      const view = select("#container").append("div").append("svg").attr("class", "linechart");
+    const DOM = {};
+    DOM.container = select("#container");
+    DOM.backButton = DOM.container.append("div").attr("class", "back").append("a").text("back").on("click", ()=>{setUrlParams({});});
+    DOM.nav = DOM.container.append("div").attr("class", "nav");
+    DOM.summary = DOM.container.append("div").attr("class", "summary");
+
+    DOM.nav_geos = DOM.nav.append("div").attr("class", "section");
+    DOM.geosTitle = DOM.nav_geos.append("div").attr("class", "title").text("Reports grouped by geo:");
+    DOM.geos = DOM.nav_geos.append("div").attr("class", "list");
+    DOM.geosDownloadAll = DOM.nav_geos.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("geos"));
+    
+    DOM.nav_templates = DOM.nav.append("div").attr("class", "section");
+    DOM.templatesTitle = DOM.nav_templates.append("div").attr("class", "title").text("Reports grouped by template:");
+    DOM.templates = DOM.nav_templates.append("div").attr("class", "list");
+    DOM.templatesDownloadAll = DOM.nav_templates.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("templates"));
+    
+    DOM.nav_graphs = DOM.nav.append("div").attr("class", "section");
+    DOM.graphsTitle = DOM.nav_graphs.append("div").attr("class", "title").text("Graphs:");
+    DOM.graphs = DOM.nav_graphs.append("div").attr("class", "list");
+    DOM.graphsDownloadAll = DOM.nav_graphs.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("graphs"));
+    
+    DOM.summary = DOM.container.append("div").attr("class", "summary");
+    
+    DOM.render = DOM.container.append("div").attr("class", "render");
+    
+    let geosUnique = {};
+    let templatesUnique = {};
+    let graphsUnique = {};
+    
+    function resolveGeoName(id){
+      let geo = geos.find(f => f.geo_id == id) || {};
+      return geo.name || id;
+    }
+    function resolveTemplateName(id){
+      let template = templates.find(f => f.template_id == id) || {};
+      return template["template short name"] || id;
+    }
+        
+    ignos.forEach(igno => {
+      igno.template = igno["clean id"].split("_")[0];
       
-      const indicator = graph.indicator.split("@")[0];
-      const dataset = graph.indicator.split("@")[1];
-      
-      if(!data_sources[dataset]) {
-        console.error(`Dataset ${dataset} is not listed`);
-      } else {
-      
-        data_sources[dataset].reader
-          .read({select: {key: ["geo", "time"], value: [indicator]}, where: {country: {"$in": [graph.geo_id]}}, from: "datapoints"})
-          .then(data => {
-            makeLinechart({
-              indicator: indicator, 
-              geo: graph.geo_id, 
-              data: data, 
-              svg: view, 
-              geoProps: geos.find(f => f.geo_id == graph.geo_id),
-              conceptProps: data_sources[dataset].concepts.find(c => c.concept == indicator),
-              template: templates.find(f => f.template_id == graph.id.split("_")[0]),
-              options
-            });
-            if(options.download === "on") saveSvgAsPng(view.node(), graph.id + ".png");
-          })
-          .catch(error => console.error(error));
+      if(!geosUnique[igno.geo] && igno.geo) {
+        geosUnique[igno.geo] = true;
+        DOM.geos.append("span").append("a").text(resolveGeoName(igno.geo) + ",").on("click", ()=>{setUrlParams({geo: igno.geo});});
+      }
+      if(!templatesUnique[igno.template] && igno.template.includes("t")) {
+        templatesUnique[igno.template] = true;
+        DOM.templates.append("span").append("a").text(resolveTemplateName(igno.template) + ",").on("click", ()=>{setUrlParams({template: igno.template});});
       }
     });
-  });
-
-
-      
-      
-
-      
-
-
-
-
-  function makeLinechart({indicator = "", geo = "", data = [], svg, geoProps = {}, conceptProps = {}, template = {}, options = {}}){
-    const MARGIN = {top: 50, right: 50, bottom: 50, left: 75};
-    const WIDTH = 640 - MARGIN.left - MARGIN.right;
-    const HEIGHT = 480 - MARGIN.top - MARGIN.bottom;  
     
-    svg
-      .attr("width", WIDTH + MARGIN.left + MARGIN.right + "px")
-      .attr("height", HEIGHT + MARGIN.top + MARGIN.bottom + "px");
+    graphs.forEach(graph => {
+      if(!graphsUnique[graph.id] && graph.id) {
+        graphsUnique[graph.id] = true;
+        DOM.graphs.append("span").append("a").text(graph.id + ",").on("click", ()=>{setUrlParams({graph: graph.id});});
+      }
+    });
     
-    if (!data.length) {
-      svg.append("text")
-        .attr("dy", "20px")
-        .text(`EMPTY DATA for ${template["template short name"]} and ${geo}`).style("fill", "red");
-      
-    } else {
-      
-      const PERCENT = template["template short name"].includes("%");
-      const formatter = (d) => (format(".2~s")(d) + (PERCENT?"%":""));
-      
-      svg.append("svg:defs").append("svg:marker")
-        .attr("id", "arrow")
-        .attr("viewBox", "0 -5 10 10")
-        .attr("markerWidth", 5)
-        .attr("markerHeight", 5)
-        .attr("orient", "auto")
-        .append("svg:path")
-        .attr("d", "M0,-3L7,0L0,3");
-      
-      svg.append("svg:defs").append("svg:marker")
-        .attr("id", "cicle")
-        .attr("viewBox", "-5 -5 10 10")
-        .attr("markerWidth", 5)
-        .attr("markerHeight", 5)
-        .attr("orient", "auto")
-        .append("svg:circle")
-        .attr("r", 3)
-        .attr("x0", 0)
-        .attr("y0", 0);
-      
-      const g = svg.append("g")
-        .attr("transform", "translate(" + MARGIN.left + "," + MARGIN.top + ")");
-      
-      if(options["chart title"] === "on") g.append("text").attr("dy","-10px").text(conceptProps.name + " in " + geoProps.name);
-      
-      var xScale = time()
-        .domain(extent(data.map(m => m.time)))
-        .range([0, WIDTH]);
-      
-      var yScale = linear$2()
-        .domain(PERCENT ? [0,100] : extent(data.map(m => m[indicator])))
-        .range([HEIGHT, 0]);
-      
-      var line$1 = line()
-        .x(function(d) { return xScale(d.time); }) // set the x values for the line generator
-        .y(function(d) { return yScale(d[indicator]); }) // set the y values for the line generator 
-        .curve(curveLinear);
-      
-      g.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + HEIGHT + ")")
-        .call(axisBottom(xScale).ticks(5).tickSizeOuter(0));
-      
-      g.append("g")
-        .attr("class", "y axis")
-        .call(axisLeft(yScale).tickFormat(formatter).ticks(5).tickSizeOuter(0)); 
-      
-      g.append("path")
-        .datum(data) 
-        .attr('marker-start', (d) => "url(#cicle)")//attach the arrow from defs
-        .attr('marker-end', (d) => "url(#arrow)")//attach the arrow from defs
-        .attr("class", "line") 
-        .attr("d", line$1);
-      
-      const endTime = max(xScale.domain());
-      const endValue = data.find(f => f.time - endTime == 0)[indicator];
-      const upperHalf = yScale(endValue) < HEIGHT/2;
-      
-      g.append("text")
-        .attr("class", "endvalue")
-        .attr("text-anchor", "end")
-        .attr("dy", upperHalf? "50px" : "-30px")
-        .attr("dx", MARGIN.right)
-        .attr("x", xScale(endTime))
-        .attr("y", yScale(endValue))
-        .text(formatter(endValue));
-      
-      
+
+    let params = getUrlParams();
+    let paramsEmpty = keys(params).length == 0;
+    DOM.nav.classed("invisible", !paramsEmpty);
+    DOM.backButton.classed("invisible", paramsEmpty);
+    DOM.summary.classed("invisible", !paramsEmpty);
+    
+    makeSummary({view: DOM.summary, geos, templates, ignos, options});
+    
+    function render (params){
+      if (params.geo) {
+        makeReport({geo_id: params.geo, ignos, view: DOM.render, graphs, geos, templates, data_sources, options});
+
+      } else if (params.template) {
+        makeReport({template_id: params.template, ignos, view: DOM.render, graphs, geos, templates, data_sources, options});
+
+      } else if (params.graph) {
+        let graph = graphs.find(f => f.id == params.graph);
+        let geo = geos.find(f => f.geo_id == graph.geo_id);
+        let template = templates.find(f => f.template_id == graph.id.split("_")[0]);
+        makeLinechart({view: DOM.render, graph, data_sources, geo, template, options});
+      }
+    }  
+    render(params);
+    
+    
+    function downloadAll(what) {
+      if(what === "graphs"){
+        graphs.forEach(graph => {
+          
+          let geo = geos.find(f => f.geo_id == graph.geo_id);
+          let template = templates.find(f => f.template_id == graph.id.split("_")[0]);
+          makeLinechart({view: DOM.render, graph, data_sources, geo, template, options})
+            .then((svg)=>{
+              downloadChart(svg, graph.id + ".png")
+                .then(()=>svg.remove());
+            });
+          
+          
+        });
+      } else if (what == "templates"){
+        keys(templatesUnique).forEach(template_id => {
+          makeReport({template_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
+            .then((div)=>{
+              downloadReport(div, template_id)
+                .then(()=>div.remove());
+            });
+        });
+      } else if (what == "geos"){
+        keys(geosUnique).forEach(geo_id => {
+          makeReport({geo_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
+            .then((div)=>{
+              downloadReport(div, geo_id)
+                .then(()=>div.remove());
+            });
+        });
+      }
     }
+    
+    
+    async function downloadReport(view, name){
+      let doc = new jsPDF("l","mm","a4");
 
-  }
+      
+      return await new Promise((resolve, reject) => {
+      
+        var promises = [];
+        view.selectAll(".page").each(function(){
+          promises.push(html2canvas(this));
+        });
+        
+        Promise.all(promises).then(pages => {
+
+          pages.forEach(page => {
+            var imgData = page.toDataURL('image/png');              
+            doc.addImage(imgData, 'PNG', 0, 0, 297, 210);
+            doc.addPage();
+          });
+          doc.save(name);
+          resolve();
+        });
+      })
+    }
+    
+    async function downloadChart(view, name){
+      return saveSvgAsPng(view.node(), name);
+    }
+    
+  });
 
 })));
 //# sourceMappingURL=bundle.js.map

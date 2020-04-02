@@ -25,11 +25,23 @@ module.exports = {
     }),
     copy({
       targets: [{
-        src: ["index.html", "style.css", "./node_modules/save-svg-as-png/lib/saveSvgAsPng.js", "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js", "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js.map"],
+        src: [
+          "index.html", 
+          "style.css", 
+          "./libs/html2canvas.min.js",
+          "./libs/jsPDF-1.3.2/dist/jspdf.min.js",
+          "./node_modules/save-svg-as-png/lib/saveSvgAsPng.js", 
+          "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js", 
+          "./node_modules/vizabi-ddfservice-reader/dist/vizabi-ddfservice-reader.js.map"
+        ],
         dest: "build"
+      },{
+        src: "assets/",
+        dest: "build/"
       }]
     }),
     serve('build'),
     livereload()
   ]
 };
+
