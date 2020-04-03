@@ -18828,7 +18828,7 @@
     source: "Source"
   };
 
-  const TEMPLATE1 = {
+  const STATIC_CONTENT1 = {
     title: "FLIP YOUR WORLDVIEW",
     columns: [{
       header: "IT IS",
@@ -18843,7 +18843,7 @@
     }]
   };
 
-  const TEMPLATE2 = {
+  const STATIC_CONTENT2 = {
     title: "THE PROJECT",
     columns: [{
       header: "METHOD",
@@ -18857,7 +18857,7 @@
     }]
   };
 
-  const TEMPLATE3 = {
+  const STATIC_CONTENT3 = {
     title: "HOW TO USE THE STUDY",
     columns: [{
       header: "",
@@ -18875,7 +18875,7 @@
     }]
   };
 
-  const TEMPLATE4 = {
+  const STATIC_CONTENT4 = {
     title: "CONTACT",
     columns: [{
       header: "",
@@ -18895,60 +18895,57 @@
   };
 
 
-  function makeReport({geo_id="", template_id="", ignos=[], view, graphs, geos, templates, data_sources, options}){
+  function makeReport({view, geo_id="", template_id="", ignos=[], geos, templates}){
 
     
-    let data = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id));
+    ignos = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id));
     
-    let content = view.append("div").attr("class", "report");
-    content
+    
+    let report = view.append("div").attr("class", "report");
+    
+    report
       .append("div").attr("class","section")
       .append("div").attr("class","cover page").each(function(){
-        makeReportCover({view: d3.select(this), geo_id, template_id, geos, templates});
+        makeReportCoverPage({view: d3.select(this), geo_id, template_id, geos, templates});
       });
     
-    if (!template_id) content
+    if (!template_id) report
       .append("div").attr("class","section")
-      .append("div").attr("class","template page").each(function(){
-        makeReportTemplatePage({view: d3.select(this), pagenum: 2, content: TEMPLATE1});
+      .append("div").attr("class","static page").each(function(){
+        makeReportStaticPage({view: d3.select(this), pagenum: 2, content: STATIC_CONTENT1});
       });  
-    if (!template_id) content
+    if (!template_id) report
       .append("div").attr("class","section")
-      .append("div").attr("class","template page").each(function(){
-        makeReportTemplatePage({view: d3.select(this), pagenum: 3, content: TEMPLATE2});
+      .append("div").attr("class","static page").each(function(){
+        makeReportStaticPage({view: d3.select(this), pagenum: 3, content: STATIC_CONTENT2});
       });
 
-    content
-      .append("div").attr("class","section").selectAll("div").data(data).enter()
+    if(ignos.length) report
+      .append("div").attr("class","section").selectAll("div").data(ignos).enter()
       .append("div").attr("class","question page").each(function(igno, index){
         let geo = geos.find(f => f.geo_id == igno.geo);
         let template = templates.find(f => f.template_id == igno.template);
-        let graph = null; //graphs.find(f => f.id == igno["clean id"])
-        makeReportSegmant({view: d3.select(this), igno, graph, geo, template, data_sources, options, index, pagenum: index + 4});
+        makeReportQuestionPage({view: d3.select(this), igno, geo, template, index, pagenum: index + 4});
       });
     
-    
-    content
+    if(ignos.length) report
       .append("div").attr("class", "section")
       .append("div").attr("class", "summary page").each(function(){
-        makeSummary({view: d3.select(this), geo_id, template_id, geos, templates, ignos, options});
+        makeReportSummaryPage({view: d3.select(this), ignos, geos, templates, pagenum: ignos.length + 4});
       }); 
     
-    if (!template_id) content
+    if (!template_id) report
       .append("div").attr("class","section")
-      .append("div").attr("class","template page").each(function(){
-        makeReportTemplatePage({view: d3.select(this), pagenum: data.length + 5, content: TEMPLATE3});
+      .append("div").attr("class","static page").each(function(){
+        makeReportStaticPage({view: d3.select(this), pagenum: ignos.length + 5, content: STATIC_CONTENT3});
       });
-    if (!template_id) content
+    if (!template_id) report
       .append("div").attr("class","section")
-      .append("div").attr("class","template page").each(function(){
-        makeReportTemplatePage({view: d3.select(this), pagenum: data.length + 6, content: TEMPLATE4});
+      .append("div").attr("class","static page").each(function(){
+        makeReportStaticPage({view: d3.select(this), pagenum: ignos.length + 6, content: STATIC_CONTENT4});
       });
       
-
-    
-    return Promise.resolve(content);
-    
+    return Promise.resolve(report);
   }
 
 
@@ -18964,7 +18961,7 @@
     return what;
   }
 
-  function makeReportCover({view, geo_id, template_id, geos, templates}){
+  function makeReportCoverPage({view, geo_id, template_id, geos, templates}){
     let what = getWhat({geo_id, template_id, geos, templates});
     
     view
@@ -18991,7 +18988,7 @@
       .text("A study conducted by Gapminder Foundation for Expo Dubai"); 
   }
 
-  function makeReportTemplatePage({view, pagenum, content}){
+  function makeReportStaticPage({view, pagenum, content}){
     view
       .style("background-image", "url('./assets/images/back.png')");
     
@@ -19035,7 +19032,7 @@
       .text(pagenum);
   }
                               
-  function makeReportSegmant({view, pagenum, igno={}, graph, geo={}, template, data_sources, options, index}){
+  function makeReportQuestionPage({view, igno={}, geo={}, template, index, pagenum}){
     
      
     igno.ungoal = parseInt(1 + Math.random()*16);
@@ -19064,7 +19061,7 @@
       }
     ];
     
-    let formatRef = format$1("SHARE");
+    
     let formatAns = format$1(template["template short name"].includes("%")? "SHARE":""); //🌶
     
     
@@ -19089,9 +19086,9 @@
     
     if(igno["answer type"]=="text"){
       header.append("div").attr("class", "options").html(`
-      <div><span>A.</span> <span>${formatAns(igno.a1)}</span></div>
-      <div><span>B.</span> <span>${formatAns(igno.a2)}</span></div>
-      <div><span>C.</span> <span>${formatAns(igno.a3)}</span></div>
+      <div>A. ${formatAns(igno.a1)}</div>
+      <div>B. ${formatAns(igno.a2)}</div>
+      <div>C. ${formatAns(igno.a3)}</div>
     `);
     } else if(igno["answer type"]=="image"){
       header.append("div").html("Answer images are not supported yet");
@@ -19118,53 +19115,11 @@
       .attr("class","label-pctcorrect")
       .html("Percent answering correct");
     
-    let chart = discussion.append("div")
-      .attr("class","answers-chart");
-    
-    chart.selectAll("row").data(igno.answers).enter().append("div")
-      .attr("class", "row")
-      .each(function(d){
-        const view = d3.select(this);
-        const correct = d.answers[igno.legend.correct];
-      
-        view.append("div").attr("class", "name").text(d.name);
-        let scale = view.append("div").attr("class", "scale");
-      
-        scale.selectAll(".tick").data(Array(11)).enter().append("div")
-          .attr("class", "tick")
-          .style("left", (_, i)=>(i*10+"%"));
-      
-        scale.append("div")
-          .attr("class", "bar")
-          .style("width", correct * 100 + "%");
-      
-        let value = scale.append("div")
-          .attr("class", "value")
-          .text(formatRef(correct));
-      
-        if(correct < 0.1) value
-          //.style("color", )
-          .style("text-shadow", "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff")
-          .style("text-align", "left")
-          .style("left", correct * 100 + "%");
-      
-        if(correct >= 0.1) value
-          .style("color", "white")
-          .style("text-align", "right")
-          .style("right", (1-correct) * 100 + "%");
-      });
-    
-    let labels = chart.append("div")
-      .attr("class", "row");
-    labels.append("div")
-      .attr("class", "name");
-    labels.append("div")
-      .attr("class", "scale")
-      .selectAll(".tick").data(Array(11)).enter().append("div")
-      .attr("class", "tick-label")
-      .style("left", (_, i)=>(i*10-4+"%"))
-      .text((_, i)=>(i*10+"%"));
-    
+    makeAnswersChart({
+      view: discussion.append("table").attr("class","answers-chart"), 
+      data: igno.answers.map(m => ({name: m.name, value: m.answers[igno.legend.correct]}) )
+    });
+
     discussion.append("div")
       .attr("class","text2")
       .html(igno.discussion);
@@ -19177,25 +19132,93 @@
       .attr("class","pagenum")
       .text(pagenum);
     
+  }
+
+
+  function makeAnswersChart({view, data}){
+    let formatRef = format$1("SHARE");
     
-  //  if(graph) makeLinechart({view: discussion.append("div"), graph, data_sources, geo, template, igno, options});
+    view.selectAll("row").data(data).enter().append("tr")
+      .attr("class", "row")
+      .each(function(d){
+        const view = d3.select(this);
+      
+        view.append("td").attr("class", "name").text(d.name);
+        let scale = view.append("td").attr("class", "scale");
+      
+        scale.selectAll(".tick").data(Array(11)).enter().append("div")
+          .attr("class", "tick")
+          .style("left", (_, i)=>(i*10+"%"));
+      
+        scale.append("div")
+          .attr("class", "bar")
+          .style("width", d.value * 100 + "%");
+      
+        let text = scale.append("div")
+          .attr("class", "value")
+          .text(formatRef(d.value));
+      
+        if(d.value < 0.1) text
+          //.style("color", )
+          .style("text-shadow", "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff")
+          .style("text-align", "left")
+          .style("left", d.value * 100 + "%");
+      
+        if(d.value >= 0.1) text
+          .style("color", "white")
+          .style("text-align", "right")
+          .style("right", (1-d.value) * 100 + "%");
+      });
     
-  //  discussion.append("p").html(igno["expanded answer text"] + ` Only ${ref1_correct} in ${igno.ref1} got it right. ` + UISTRINGS.aChimpWouldGet)
-  //  const table = discussion.append("table").attr("class","reference");
-  //  table.append("tr").html(`<td>${igno.ref1}:</td>
-  //    <td>
-  //      <span class='score correct'>${Array(parseInt(ref1_correct)).join("|")}</span><span class='score wrong'>${Array(parseInt(ref1_wrong)).join("|")}</span><span class='score vwrong'>${Array(parseInt(ref1_vwrong)).join("|")}</span>
-  //      <span class='score correct'>${ref1_correct}</span> 
-  //    </td>`);
-  //  table.append("tr").html(`<td>Chimps</td>
-  //    <td>
-  //      <span class='score correct'>${Array(33).join("|")}</span><span class='score wrong'>${Array(33).join("|")}</span><span class='score vwrong'>${Array(33).join("|")}</span>
-  //      <span class='score correct'>${"33%"}</span> 
-  //    </td>`);
-  //  discussion.append("p").attr("class","misconception").html(UISTRINGS.misconception);
-  //  discussion.append("p").html(igno["why wrong text"]);
+    let labels = view.append("tr")
+      .attr("class", "row");
+    labels.append("td")
+      .attr("class", "name");
+    labels.append("td")
+      .attr("class", "scale")
+      .selectAll(".tick").data(Array(11)).enter().append("div")
+      .attr("class", "tick-label")
+      .style("left", (_, i)=>(i*10-4+"%"))
+      .text((_, i)=>(i*10+"%"));
+  }
+
+
+  function makeReportSummaryPage({view, ignos, geos, templates, pagenum}){
+
+    view.append("div")
+      .attr("class", "ungoal-icon")
+      .style("background-image", `url('./assets/images/SDG Wheel_Transparent_WEB.png')`);
+    
+    view.append("div")
+      .attr("class","title")
+      .html(`All ${ignos.length} questions`);
+    
+    view.append("div")
+      .attr("class","label-pctcorrect")
+      .html("Percent answering correct");
+    
+    makeAnswersChart({
+      view: view.append("table").attr("class","answers-chart"), 
+      data: ignos.map(m => ({name: m.question, value: Math.random()}))
+    });
+    
+    view.append("div")
+      .attr("class","takeaways")
+      .html("[Takeaways for the country – compare with results for other countries in region]");
+      
+    view.append("div")
+      .attr("class","conclusions")
+      .html("[Conclusion how you should think about this country to be less wrong]");
     
     
+    view.append("div")
+      .attr("class","logo")
+      .style("background-image", "url('./assets/images/flip.png')");
+    
+    view.append("div")
+      .attr("class","pagenum")
+      .text(pagenum);
+
   }
 
   window.d3 = d3$1;

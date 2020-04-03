@@ -43,6 +43,9 @@ a:hover {
 }
 
 
+
+
+
 .report .page{
   width: 96vw;
   height: 68vw;
@@ -82,7 +85,7 @@ a:hover {
   font-size: 1.4vw;
 }
 
-.report .template.page .logo {
+.report .static.page .logo {
   width: 30vw;
   height: 12vw;
   top: 1vw;
@@ -90,7 +93,7 @@ a:hover {
   position: absolute;
 }
 
-.report .template.page .title{
+.report .static.page .title{
   position: absolute;
   top: 14vw;
   left: 5%;
@@ -99,23 +102,23 @@ a:hover {
   text-transform: uppercase;
 }
 
-.report .template.page .column .header{
+.report .static.page .column .header{
   margin-bottom: 1vw;
   font-size: 2vw;
 }
 
-.report .template.page .column .content{
+.report .static.page .column .content{
   margin-bottom: 2vw;
   line-height: 2.4vw;
   text-align: justify;
   font-size: 1.4vw;
 }
 
-.report .template.page .column .image{
+.report .static.page .column .image{
   height: 4vw;
 }
 
-.report .template.page .column {
+.report .static.page .column {
   position: absolute;
   top: 19vw;
   bottom: 2vw;
@@ -123,14 +126,14 @@ a:hover {
   overflow: hidden;
 }
 
-.report .template.page .column.column0 {
+.report .static.page .column.column0 {
   left: 5%;
 }
-.report .template.page .column.column1 {
+.report .static.page .column.column1 {
   left: 45%;
 }
 
-.report .template.page .pagenum {
+.report .static.page .pagenum {
   font-size: 1.4vw;
   bottom: 1.5vw;
   right: 2vw;
@@ -196,77 +199,77 @@ a:hover {
   font-size: 1.4vw;
   line-height: 2.4vw;
 }
-.report .question.page .discussion .label-pctcorrect {
-  margin-top: 2vw;
-  font-style: italic;
-  font-size: 1vw;
-}
+
 .report .question.page .discussion .answers-chart {
-  margin-top: 2vw;
+  width: 90%;
 }
-
-.report .question.page .discussion .row {
-    position: relative;
-    top: -1vw;
-    height: 3vw;
-}
-
-.report .question.page .discussion .row .name {
-  display: inline-block;
-  font-size: 1.4vw;
-  text-align: right;
+.report .question.page .discussion .answers-chart .row .name {
   width: 20%;
-  position: relative;
-  padding-right: 1vw;
-  top: 0.5vw;
 }
-.report .question.page .discussion .row .scale {
-  display: inline-block;
+.report .question.page .discussion .answers-chart .row .scale {
   width: 70%;
-  position: relative;
-  top: -1.5vw;
-}
-.report .question.page .discussion .row .scale .tick {
-  display: inline-block;
-  position: absolute;
-  height: 3vw;
-  width: 0px;
-  border-left: 1px solid var(--accent-color);
-}
-
-.report .question.page .discussion .row .scale .bar {
-  position: absolute;
-  top: 0.5vw;
-  left: 0;
-  height: 2vw;
-  background-color: var(--accent-color);
-}
-.report .question.page .discussion .row .scale .value {
-  position: absolute;
-  top: 0.9vw;
-  height: 2vw;
-  font-size: 1vw;
-  padding-left: 0.3vw;
-  padding-right: 0.3vw;
-  color: var(--accent-color);
-}
-.report .question.page .discussion .row .scale .tick-label {
-  display: inline-block;
-  position: absolute;
-  height: 3vw;
-  text-align: center;
-  width: 10%;
-  font-size: 1vw;
-  top: 0.5vw;
 }
 
 .report .question.page .discussion .text2 {
-  margin-top: 2vw;
+  margin-top: 4vw;
   font-size: 1.4vw;
   line-height: 2.4vw;
 }
 
-.report .question.page .discussion .logo {
+
+.report .summary.page {
+  padding: 2vw;
+}
+
+.report .summary.page .ungoal-icon {
+  position: relative;
+  width: 10vw;
+  height: 10vw;
+}
+
+.report .summary.page .title {
+  position: absolute;
+  top: 5vw;
+  left: 15vw;
+  font-size: 3vw;
+  line-height: 3.4vw;
+}
+
+.report .summary.page .answers-chart {
+  width: 95%;
+}
+.report .summary.page .answers-chart .row .name {
+  width: 60%;
+}
+.report .summary.page .answers-chart .row .scale {
+  width: 30%;
+}
+
+.report .summary.page .takeaways {
+  margin-top: 4vw;
+  font-size: 1.4vw;
+  line-height: 2.4vw;
+}
+
+.report .summary.page .conclusions {
+  margin-top: 4vw;
+  font-size: 1.4vw;
+  line-height: 2.4vw;
+}
+
+
+
+
+
+.report .page .label-pctcorrect {
+  margin-top: 2vw;
+  font-style: italic;
+  font-size: 1vw;
+  width: 100%;
+  text-align: center;
+}
+
+.report .page .logo {
   width: 7.5vw;
   height: 3vw;
   bottom: 0.8vw;
@@ -274,12 +277,67 @@ a:hover {
   position: absolute;
 }
 
-.report .question.page .discussion .pagenum {
+.report .page .pagenum {
   font-size: 1.4vw;
   bottom: 1.5vw;
   right: 2vw;
   position: absolute;
 }
+
+.report .page .answers-chart {
+  margin-top: 2vw;
+  position: relative;
+  border-spacing: 0px;
+}
+
+.report .page .answers-chart .row {
+  position: relative;
+  min-height: 3vw;
+}
+
+.report .page .answers-chart .row .name {
+  font-size: 1.4vw;
+  line-height: 2.4vw;
+  text-align: right;
+  position: relative;
+  padding-right: 1vw;
+}
+.report .page .answers-chart .row .scale {
+  position: relative;
+}
+.report .page .answers-chart .row .scale .tick {
+  position: absolute;
+  height: 100%;
+  width: 0px;
+  border-left: 1px solid var(--accent-color);
+  top: 0%;
+}
+.report .page .answers-chart .row .scale .bar {
+  position: relative;
+  left: 0;
+  top: 0.7vw;
+  height: 2vw;
+  background-color: var(--accent-color);
+}
+.report .page .answers-chart .row .scale .value {
+  position: relative;
+  font-size: 1vw;
+  top: -0.9vw;
+  padding-left: 0.3vw;
+  padding-right: 0.3vw;
+  color: var(--accent-color);
+}
+.report .page .answers-chart .row .scale .tick-label {
+  display: inline-block;
+  position: absolute;
+  text-align: center;
+  width: 10%;
+  font-size: 1vw;
+  top: 1vw;
+}
+
+
+
 
 .report .reference span{font-weight: bold}
 .report .reference span.score.correct{color: var(--correct-color)}
@@ -301,6 +359,13 @@ a:hover {
 .summary .bar.wrong {background-color: var(--wrong-color)}
 .summary .bar.vwrong {background-color: var(--vwrong-color)}
 .summary span.correct-answer {color: var(--correct-color)}
+
+
+
+
+
+
+
 
 
 .back {
@@ -326,6 +391,13 @@ a:hover {
   border-radius: 2px;
   background-color: aquamarine;
 }
+
+
+
+
+
+
+
 
 
 
