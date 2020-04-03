@@ -348,7 +348,7 @@ function makeReportQuestionPage({view, igno={}, geo={}, template, index, pagenum
     .html(igno.discussion);
   
   discussion.append("div")
-    .attr("class","logo")
+    .attr("class","cornerlogo")
     .style("background-image", "url('./assets/images/flip.png')");
   
   discussion.append("div")
@@ -435,7 +435,7 @@ function makeReportSummaryPage({view, ignos, geos, templates, pagenum}){
   
   
   view.append("div")
-    .attr("class","logo")
+    .attr("class","cornerlogo")
     .style("background-image", "url('./assets/images/flip.png')");
   
   view.append("div")

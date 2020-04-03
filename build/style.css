@@ -5,9 +5,65 @@
   --wrong-color: orange;
   --vwrong-color: red;
 }
+@font-face {
+  font-family: ExpoSansStd-Medium;
+  src: url("assets/fonts/ExpoSansStd-Medium.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-MediumItalic;
+  src: url("assets/fonts/ExpoSansStd-MediumItalic.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-Light;
+  src: url("assets/fonts/ExpoSansStd-Light.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-LightItalic;
+  src: url("assets/fonts/ExpoSansStd-LightItalic.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-Thin;
+  src: url("assets/fonts/ExpoSansStd-Thin.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-ThinItalic;
+  src: url("assets/fonts/ExpoSansStd-ThinItalic.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-Book;
+  src: url("assets/fonts/ExpoSansStd-Book.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-BookItalic;
+  src: url("assets/fonts/ExpoSansStd-BookItalic.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-Bold;
+  src: url("assets/fonts/ExpoSansStd-Bold.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-BoldItalic;
+  src: url("assets/fonts/ExpoSansStd-BoldItalic.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-SemiBold;
+  src: url("assets/fonts/ExpoSansStd-SemiBold.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-SemiBoldItalic;
+  src: url("assets/fonts/ExpoSansStd-SemiBoldItalic.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-Black;
+  src: url("assets/fonts/ExpoSansStd-Black.otf") format("opentype");
+}
+@font-face {
+  font-family: ExpoSansStd-BlackItalic;
+  src: url("assets/fonts/ExpoSansStd-BlackItalic.otf") format("opentype");
+}
 
 * {
-  font-family: sans-serif;
+  font-family: ExpoSansStd-Light, sans-serif;
   background-repeat: no-repeat;
   background-size: contain;
   
@@ -191,6 +247,7 @@ a:hover {
 }
 
 .report .question.page .discussion .title {
+  font-family: ExpoSansStd-Medium, sans-serif;
   margin-top: 2vw;
   font-size: 2vw;
 }
@@ -205,6 +262,8 @@ a:hover {
 }
 .report .question.page .discussion .answers-chart .row .name {
   width: 20%;
+  font-size: 1.4vw;
+  line-height: 2.4vw;
 }
 .report .question.page .discussion .answers-chart .row .scale {
   width: 70%;
@@ -240,6 +299,8 @@ a:hover {
 }
 .report .summary.page .answers-chart .row .name {
   width: 60%;
+  font-size: 1vw;
+  line-height: 2vw;  
 }
 .report .summary.page .answers-chart .row .scale {
   width: 30%;
@@ -263,17 +324,17 @@ a:hover {
 
 .report .page .label-pctcorrect {
   margin-top: 2vw;
-  font-style: italic;
+  font-family: ExpoSansStd-LightItalic, sans-serif;
   font-size: 1vw;
   width: 100%;
   text-align: center;
 }
 
-.report .page .logo {
+.report .page .cornerlogo {
   width: 7.5vw;
   height: 3vw;
   bottom: 0.8vw;
-  right: 3.5vw;
+  right: 4vw;
   position: absolute;
 }
 
@@ -296,8 +357,6 @@ a:hover {
 }
 
 .report .page .answers-chart .row .name {
-  font-size: 1.4vw;
-  line-height: 2.4vw;
   text-align: right;
   position: relative;
   padding-right: 1vw;

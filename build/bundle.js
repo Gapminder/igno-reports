@@ -19125,7 +19125,7 @@
       .html(igno.discussion);
     
     discussion.append("div")
-      .attr("class","logo")
+      .attr("class","cornerlogo")
       .style("background-image", "url('./assets/images/flip.png')");
     
     discussion.append("div")
@@ -19212,7 +19212,7 @@
     
     
     view.append("div")
-      .attr("class","logo")
+      .attr("class","cornerlogo")
       .style("background-image", "url('./assets/images/flip.png')");
     
     view.append("div")
