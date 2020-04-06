@@ -18555,166 +18555,6 @@
     }
   }
 
-  function makeLinechart({view, graph={}, data_sources={}, geo="", template="", igno = {}, options}){
-
-    const svg = view.append("svg").attr("class", "linechart");
-
-    const indicator = graph.indicator.split("@")[0];
-    const dataset = graph.indicator.split("@")[1];
-    
-    return new Promise((resolve, reject) => {
-    
-      if(!data_sources[dataset]) {
-        reject(`Dataset ${dataset} is not listed`);
-      } else {
-
-        data_sources[dataset].reader
-          .read({select: {key: ["geo", "time"], value: [indicator]}, where: {country: {"$in": [graph.geo_id]}}, from: "datapoints"})
-          .then(data => {
-            linechart({
-              indicator, 
-              geo: graph.geo_id, 
-              data, 
-              svg, 
-              geoProps: geo,
-              conceptProps: data_sources[dataset].concepts.find(c => c.concept == indicator),
-              template,
-              igno,
-              options
-            });
-            resolve(svg);
-          })
-          .catch(error => console.error(error));
-      }
-    
-    });
-
-    
-  }
-
-
-  function linechart({indicator = "", geo = "", data = [], svg, geoProps = {}, conceptProps = {}, template = {}, igno = {}, options = {}}){
-    const MARGIN = {top: 50, right: 200, bottom: 50, left: 75};
-    const WIDTH = 640 - MARGIN.left - MARGIN.right;
-    const HEIGHT = 480 - MARGIN.top - MARGIN.bottom;  
-    
-    svg
-      .attr("width", WIDTH + MARGIN.left + MARGIN.right + "px")
-      .attr("height", HEIGHT + MARGIN.top + MARGIN.bottom + "px");
-    
-    if (!data.length) {
-      svg.append("text")
-        .attr("dy", "20px")
-        .text(`EMPTY DATA for ${template["template short name"]} and ${geo}`).style("fill", "red");
-      
-    } else {
-      
-      const PERCENT = template["template short name"].includes("%");
-      let formatter = format$1(PERCENT? "PERCENT" : "");
-      
-      svg.append("svg:defs").append("svg:marker")
-        .attr("id", "arrow")
-        .attr("viewBox", "-10 -7 12 12")
-        .attr("markerWidth", 5)
-        .attr("markerHeight", 5)
-        .attr("orient", "auto")
-        .append("svg:path")
-        .attr("d", "M-7,-4L1,0L-7,4");
-      
-      svg.append("svg:defs").append("svg:marker")
-        .attr("id", "cicle")
-        .attr("viewBox", "-5 -5 12 12")
-        .attr("markerWidth", 5)
-        .attr("markerHeight", 5)
-        .attr("orient", "auto")
-        .append("svg:circle")
-        .attr("r", 3)
-        .attr("x0", 0)
-        .attr("y0", 0);
-      
-      const g = svg.append("g")
-        .attr("transform", "translate(" + MARGIN.left + "," + MARGIN.top + ")");
-      
-      if(options["chart title"] === "on") g.append("text").attr("dy","-10px").text(conceptProps.name + " in " + geoProps.name);
-      
-      function domainBump(domain){
-        const bump = parseInt(d3.timeYear.count(domain[0], domain[1]) / 10);
-        return [d3.timeYear.offset(domain[0], -bump), d3.timeYear.offset(domain[1], bump)];
-      }
-      
-      var xScale = d3.scaleTime()
-        .domain(domainBump(d3.extent(data.map(m => m.time))))
-        .range([0, WIDTH]);
-      
-      var yScale = d3.scaleLinear()
-        .domain(PERCENT ? [0,100] : d3.extent(data.map(m => m[indicator])))
-        .range([HEIGHT, 0]);
-      
-      var line = d3.line()
-        .x(function(d) { return xScale(d.time); }) // set the x values for the line generator
-        .y(function(d) { return yScale(d[indicator]); }) // set the y values for the line generator 
-        .curve(d3.curveLinear);
-      
-      g.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + HEIGHT + ")")
-        .call(d3.axisBottom(xScale).ticks(5).tickSizeOuter(0));
-      
-      g.append("g")
-        .attr("class", "y axis")
-        .call(d3.axisLeft(yScale).tickFormat(formatter).ticks(5).tickSizeOuter(0)); 
-      
-      g.append("path")
-        .datum(data) 
-        .attr('marker-start', (d) => "url(#cicle)")//attach the arrow from defs
-        .attr('marker-end', (d) => "url(#arrow)")//attach the arrow from defs
-        .attr("class", "line") 
-        .attr("d", line);
-      
-      
-      function addReference({view, text, cssClass, yValue}) {
-        
-        let y = yScale(yValue);
-      
-        view.append("line")
-          .attr("class", "option " + cssClass)
-          .attr("x1", WIDTH)
-          .attr("x2", WIDTH + MARGIN.right)
-          .attr("y1", y)
-          .attr("y2", y);
-        
-        view.append("text")
-          .attr("class", "option " + cssClass)
-          .attr("text-anchor", "end")
-          .attr("dy", -5)
-          .attr("dx", -4)
-          .attr("x", WIDTH + MARGIN.right)
-          .attr("y", y)
-          .text(text);
-      }
-      
-      if (d3.keys(igno).length) {
-        addReference({view: g, text: "Correct", cssClass: "correct", yValue: igno[igno.correct] * (PERCENT ? 100 : 1)});
-        addReference({view: g, text: "Wrong", cssClass: "wrong", yValue: igno[igno.wrong] * (PERCENT ? 100 : 1)});
-        addReference({view: g, text: "Very wrong", cssClass: "vwrong", yValue: igno[igno["very wrong"]] * (PERCENT ? 100 : 1)});
-      }
-      
-      const endTime = d3.max(data.map(m => m.time));
-      const endValue = data.find(f => f.time - endTime == 0)[indicator];
-      const upperHalf = yScale(endValue) < HEIGHT/2;
-      
-      g.append("text")
-        .attr("class", "endvalue")
-        .attr("text-anchor", "start")
-        .attr("dy", upperHalf? "50px" : "-30px")
-        .attr("dx", 0)
-        .attr("x", xScale(endTime))
-        .attr("y", yScale(endValue))
-        .text(formatter(endValue));
-    }
-
-  }
-
   function makeSummary({view, geo_id, template_id, geos, templates, ignos, options}){
 
     const content = view.append("div").attr("class", "summary");
@@ -18727,7 +18567,7 @@
 
     let data = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id) && getTemplateQuestion(f));
     
-
+    content.append("div").text("Summary of all questions");
     
     let table = content.append("table");
     
@@ -19222,15 +19062,12 @@
   }
 
   window.d3 = d3$1;
-  window.saveSvgAsPng = saveSvgAsPng;
 
   const QUESTIONS_KEY = "115e3rQgfs96MwkrjN9Hh7GJQVHylng7QzBhgF5FFArw";
   const QUESTIONS_IGNOS_SHEET = "Ignos";
 
   const INSTRUCTIONS_KEY = "1OmmVh9M6Q-3Nb0Fy0xGyYsnDYQbl4fBCmvkCa_rdCf0";
-  const INSTRUCTIONS_GRAPHS_SHEET = "graph_list";
   const INSTRUCTIONS_TEMPLATES_SHEET = "all_templates";
-  const INSTRUCTIONS_OPTIONS_SHEET = "options";
   const INSTRUCTIONS_GEOS_SHEET = "all_geos";
 
   function googleSheetLink(key, sheet){
@@ -19250,25 +19087,16 @@
   function setUrlParams(kv){
     let v = values(kv);
     window.location.search = keys(kv).map((k,i) => k + "=" + v[i]).join("&");
-    
   }
 
   // fetch instructions
-  let graphs = [];
   let templates = [];
-  let options = {};
   let geos = [];
   let ignos = [];
 
   const fetch_instructions = [
-    csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_GRAPHS_SHEET))
-      .then(result => graphs = result)
-      .catch(error => console.error(error)),
     csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_TEMPLATES_SHEET))
       .then(result => templates = result)
-      .catch(error => console.error(error)),
-    csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_OPTIONS_SHEET))
-      .then(result => result.forEach(kv => options[kv.key] = kv.value))
       .catch(error => console.error(error)),
     csv$1(googleSheetLink(INSTRUCTIONS_KEY, INSTRUCTIONS_GEOS_SHEET))
       .then(result => geos = result)
@@ -19278,66 +19106,29 @@
       .catch(error => console.error(error))
   ];
 
-  // init readers
-  const fetch_concept_props = [];
-
-  const data_sources = {
-    "open_numbers_sg": {dataset: "sg-master"},
-    "open_numbers_wdi": {dataset: "wdi-master"}
-  };
-
-  Object.keys(data_sources).map(m => {
-    const v = data_sources[m];
-    v.reader = DDFServiceReader.getReader();
-    v.reader.init({service: 'https://big-waffle.gapminder.org', name: v.dataset});
-    v.conceptPromise = v.reader
-      .read({select: {key: ["concept"], value: ["name"]}, from: "concepts"})
-      .then(result => v.concepts = result)
-      .catch(error => console.error(error));
-    fetch_concept_props.push(v.conceptPromise);
-  });
-
 
 
   // wait when all async stuff is complete 
-  Promise.all(fetch_concept_props.concat(fetch_instructions)).then(result => {
+  Promise.all(fetch_instructions).then(result => {
     
     const DOM = {};
     DOM.container = select("#container");
     DOM.backButton = DOM.container.append("div").attr("class", "back").append("a").text("back").on("click", ()=>{setUrlParams({});});
     DOM.nav = DOM.container.append("div").attr("class", "nav");
-    DOM.summary = DOM.container.append("div").attr("class", "summary");
 
     DOM.nav_geos = DOM.nav.append("div").attr("class", "section");
     DOM.geosTitle = DOM.nav_geos.append("div").attr("class", "title").text("Reports grouped by geo:");
     DOM.geos = DOM.nav_geos.append("div").attr("class", "list");
-    DOM.geosDownloadAll = DOM.nav_geos.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("geos"));
-    
-    DOM.nav_templates = DOM.nav.append("div").attr("class", "section");
-    DOM.templatesTitle = DOM.nav_templates.append("div").attr("class", "title").text("Reports grouped by template:");
-    DOM.templates = DOM.nav_templates.append("div").attr("class", "list");
-    DOM.templatesDownloadAll = DOM.nav_templates.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("templates"));
-    
-    DOM.nav_graphs = DOM.nav.append("div").attr("class", "section");
-    DOM.graphsTitle = DOM.nav_graphs.append("div").attr("class", "title").text("Graphs:");
-    DOM.graphs = DOM.nav_graphs.append("div").attr("class", "list");
-    DOM.graphsDownloadAll = DOM.nav_graphs.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("graphs"));
+    DOM.geosDownloadAll = DOM.nav.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll());
     
     DOM.summary = DOM.container.append("div").attr("class", "summary");
-    
     DOM.render = DOM.container.append("div").attr("class", "render");
     
     let geosUnique = {};
-    let templatesUnique = {};
-    let graphsUnique = {};
     
     function resolveGeoName(id){
       let geo = geos.find(f => f.geo_id == id) || {};
       return geo.name || id;
-    }
-    function resolveTemplateName(id){
-      let template = templates.find(f => f.template_id == id) || {};
-      return template["template short name"] || id;
     }
         
     ignos.forEach(igno => {
@@ -19347,18 +19138,8 @@
         geosUnique[igno.geo] = true;
         DOM.geos.append("span").append("a").text(resolveGeoName(igno.geo) + ",").on("click", ()=>{setUrlParams({geo: igno.geo});});
       }
-      if(!templatesUnique[igno.template] && igno.template.includes("t")) {
-        templatesUnique[igno.template] = true;
-        DOM.templates.append("span").append("a").text(resolveTemplateName(igno.template) + ",").on("click", ()=>{setUrlParams({template: igno.template});});
-      }
     });
     
-    graphs.forEach(graph => {
-      if(!graphsUnique[graph.id] && graph.id) {
-        graphsUnique[graph.id] = true;
-        DOM.graphs.append("span").append("a").text(graph.id + ",").on("click", ()=>{setUrlParams({graph: graph.id});});
-      }
-    });
     
 
     let params = getUrlParams();
@@ -19367,56 +19148,29 @@
     DOM.backButton.classed("invisible", paramsEmpty);
     DOM.summary.classed("invisible", !paramsEmpty);
     
-    makeSummary({view: DOM.summary, geos, templates, ignos, options});
+    makeSummary({view: DOM.summary, geos, templates, ignos});
     
     function render (params){
-      if (params.geo) {
-        makeReport({geo_id: params.geo, ignos, view: DOM.render, graphs, geos, templates, data_sources, options});
-
-      } else if (params.template) {
-        makeReport({template_id: params.template, ignos, view: DOM.render, graphs, geos, templates, data_sources, options});
-
-      } else if (params.graph) {
-        let graph = graphs.find(f => f.id == params.graph);
-        let geo = geos.find(f => f.geo_id == graph.geo_id);
-        let template = templates.find(f => f.template_id == graph.id.split("_")[0]);
-        makeLinechart({view: DOM.render, graph, data_sources, geo, template, options});
-      }
+      if(params.geo || params.template) makeReport({
+        view: DOM.render,
+        geo_id: params.geo, 
+        template_id: params.template,
+        ignos,
+        geos,
+        templates
+        });
     }  
     render(params);
     
     
-    function downloadAll(what) {
-      if(what === "graphs"){
-        graphs.forEach(graph => {
-          
-          let geo = geos.find(f => f.geo_id == graph.geo_id);
-          let template = templates.find(f => f.template_id == graph.id.split("_")[0]);
-          makeLinechart({view: DOM.render, graph, data_sources, geo, template, options})
-            .then((svg)=>{
-              downloadChart(svg, graph.id + ".png")
-                .then(()=>svg.remove());
-            });
-          
-          
-        });
-      } else if (what == "templates"){
-        keys(templatesUnique).forEach(template_id => {
-          makeReport({template_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
-            .then((div)=>{
-              downloadReport(div, template_id)
-                .then(()=>div.remove());
-            });
-        });
-      } else if (what == "geos"){
-        keys(geosUnique).forEach(geo_id => {
-          makeReport({geo_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
-            .then((div)=>{
-              downloadReport(div, geo_id)
-                .then(()=>div.remove());
-            });
-        });
-      }
+    function downloadAll() {
+      keys(geosUnique).forEach(geo_id => {
+        makeReport({geo_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
+          .then((div)=>{
+            downloadReport(div, geo_id)
+              .then(()=>div.remove());
+          });
+      });
     }
     
     
@@ -19444,9 +19198,6 @@
       })
     }
     
-    async function downloadChart(view, name){
-      return saveSvgAsPng(view.node(), name);
-    }
     
   });
 

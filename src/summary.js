@@ -12,7 +12,7 @@ export default function makeSummary({view, geo_id, template_id, geos, templates,
 
   let data = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id) && getTemplateQuestion(f));
   
-
+  content.append("div").text("Summary of all questions");
   
   let table = content.append("table")
   

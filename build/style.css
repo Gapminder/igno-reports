@@ -410,7 +410,7 @@ a:hover {
 
 
 
-
+.summary {margin-top: 5vw;}
 .summary table th {text-align: left;}
 .summary table tr td {padding-top: 0.2em; padding-bottom: 0.2em;}
 .summary .bar {height: 8px;}
@@ -449,6 +449,7 @@ a:hover {
   display: inline-block;
   border-radius: 2px;
   background-color: aquamarine;
+  cursor: pointer;
 }
 
 

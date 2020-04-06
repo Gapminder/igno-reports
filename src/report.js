@@ -1,4 +1,3 @@
-import makeLinechart from "./linechart.js";
 import makeSummary from "./summary.js";
 import format from "./formatter.js";
 
