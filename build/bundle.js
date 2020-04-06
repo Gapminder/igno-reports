@@ -19005,7 +19005,7 @@
           .style("left", d.value * 100 + "%");
       
         if(d.value >= 0.1) text
-          .style("color", "white")
+          //.style("color", "white")
           .style("text-align", "right")
           .style("right", (1-d.value) * 100 + "%");
       });
