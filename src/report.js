@@ -1,4 +1,3 @@
-import makeSummary from "./summary.js";
 import format from "./formatter.js";
 
 const GLOBAL_GOALS_COLORS = [
