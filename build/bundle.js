@@ -5,7 +5,7 @@
   factory();
 }((function () { 'use strict';
 
-  var version = "5.15.0";
+  var version = "5.15.1";
 
   function ascending(a, b) {
     return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
@@ -7448,19 +7448,20 @@
         } else {
           value = +value;
 
+          // Determine the sign. -0 is not less than 0, but 1 / -0 is!
+          var valueNegative = value < 0 || 1 / value < 0;
+
           // Perform the initial formatting.
-          var valueNegative = value < 0;
           value = isNaN(value) ? nan : formatType(Math.abs(value), precision);
 
           // Trim insignificant zeros.
           if (trim) value = formatTrim(value);
 
-          // If a negative value rounds to zero during formatting, treat as positive.
-          if (valueNegative && +value === 0) valueNegative = false;
+          // If a negative value rounds to zero after formatting, and no explicit positive sign is requested, hide the sign.
+          if (valueNegative && +value === 0 && sign !== "+") valueNegative = false;
 
           // Compute the prefix and suffix.
           valuePrefix = (valueNegative ? (sign === "(" ? sign : minus) : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
-
           valueSuffix = (type === "s" ? prefixes[8 + prefixExponent / 3] : "") + valueSuffix + (valueNegative && sign === "(" ? ")" : "");
 
           // Break the formatted value into the integer “value” part that can be
@@ -18741,47 +18742,41 @@
     ignos = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id));
     
     
-    let report = view.append("div").attr("class", "report");
+    let report = view.append("div").attr("class", "slides report");
     
     report
-      .append("div").attr("class","section")
-      .append("div").attr("class","cover page").each(function(){
+      .append("section").attr("class","cover page").each(function(){
         makeReportCoverPage({view: d3.select(this), geo_id, template_id, geos, templates});
       });
     
-    if (!template_id) report
-      .append("div").attr("class","section")
-      .append("div").attr("class","static page").each(function(){
+    if (STATIC_CONTENT1) report
+      .append("section").attr("class","static page").each(function(){
         makeReportStaticPage({view: d3.select(this), pagenum: 2, content: STATIC_CONTENT1});
       });  
-    if (!template_id) report
-      .append("div").attr("class","section")
-      .append("div").attr("class","static page").each(function(){
+    if (STATIC_CONTENT2) report
+      .append("section").attr("class","static page").each(function(){
         makeReportStaticPage({view: d3.select(this), pagenum: 3, content: STATIC_CONTENT2});
       });
 
     if(ignos.length) report
-      .append("div").attr("class","section").selectAll("div").data(ignos).enter()
-      .append("div").attr("class","question page").each(function(igno, index){
+      .selectAll(".question.page").data(ignos).enter()
+      .append("section").attr("class","question page").each(function(igno, index){
         let geo = geos.find(f => f.geo_id == igno.geo);
         let template = templates.find(f => f.template_id == igno.template);
         makeReportQuestionPage({view: d3.select(this), igno, geo, template, index, pagenum: index + 4});
       });
     
     if(ignos.length) report
-      .append("div").attr("class", "section")
-      .append("div").attr("class", "summary page").each(function(){
+      .append("section").attr("class", "summary page").each(function(){
         makeReportSummaryPage({view: d3.select(this), ignos, geos, templates, pagenum: ignos.length + 4});
       }); 
     
-    if (!template_id) report
-      .append("div").attr("class","section")
-      .append("div").attr("class","static page").each(function(){
+    if (STATIC_CONTENT3) report
+      .append("section").attr("class","static page").each(function(){
         makeReportStaticPage({view: d3.select(this), pagenum: ignos.length + 5, content: STATIC_CONTENT3});
       });
-    if (!template_id) report
-      .append("div").attr("class","section")
-      .append("div").attr("class","static page").each(function(){
+    if (STATIC_CONTENT4) report
+      .append("section").attr("class","static page").each(function(){
         makeReportStaticPage({view: d3.select(this), pagenum: ignos.length + 6, content: STATIC_CONTENT4});
       });
       
@@ -19113,16 +19108,16 @@
     
     const DOM = {};
     DOM.container = select("#container");
-    DOM.backButton = DOM.container.append("div").attr("class", "back").append("a").text("back").on("click", ()=>{setUrlParams({});});
+  //  DOM.backButton = DOM.container.append("div").attr("class", "back").append("a").text("back").on("click", ()=>{setUrlParams({})});
     DOM.nav = DOM.container.append("div").attr("class", "nav");
 
     DOM.nav_geos = DOM.nav.append("div").attr("class", "section");
     DOM.geosTitle = DOM.nav_geos.append("div").attr("class", "title").text("Reports grouped by geo:");
     DOM.geos = DOM.nav_geos.append("div").attr("class", "list");
-    DOM.geosDownloadAll = DOM.nav.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll());
+    DOM.geosDownloadAll = DOM.nav.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("geos"));
     
     DOM.summary = DOM.container.append("div").attr("class", "summary");
-    DOM.render = DOM.container.append("div").attr("class", "render");
+    DOM.render = select(".reveal");
     
     let geosUnique = {};
     
@@ -19143,9 +19138,9 @@
     
 
     let params = getUrlParams();
-    let paramsEmpty = keys(params).length == 0;
+    let paramsEmpty = keys(params).length == 0 && false;
     DOM.nav.classed("invisible", !paramsEmpty);
-    DOM.backButton.classed("invisible", paramsEmpty);
+    //DOM.backButton.classed("invisible", paramsEmpty);
     DOM.summary.classed("invisible", !paramsEmpty);
     
     makeSummary({view: DOM.summary, geos, templates, ignos});
@@ -19159,45 +19154,24 @@
         geos,
         templates
         });
+      
+      
+        // More info https://github.com/hakimel/reveal.js#configuration
+        Reveal.initialize({
+            controls: true,
+            progress: false,
+            center: true,
+            hash: true,
+            width: "100%",
+            height: "100%",
+            margin: 0,
+            minScale: 1,
+            maxScale: 1,
+            transition: 'none', // none/fade/slide/convex/concave/zoom
+        });
+      
     }  
-    render(params);
-    
-    
-    function downloadAll() {
-      keys(geosUnique).forEach(geo_id => {
-        makeReport({geo_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
-          .then((div)=>{
-            downloadReport(div, geo_id)
-              .then(()=>div.remove());
-          });
-      });
-    }
-    
-    
-    async function downloadReport(view, name){
-      let doc = new jsPDF("l","mm","a4");
-
-      
-      return await new Promise((resolve, reject) => {
-      
-        var promises = [];
-        view.selectAll(".page").each(function(){
-          promises.push(html2canvas(this));
-        });
-        
-        Promise.all(promises).then(pages => {
-
-          pages.forEach(page => {
-            var imgData = page.toDataURL('image/png');              
-            doc.addImage(imgData, 'PNG', 0, 0, 297, 210);
-            doc.addPage();
-          });
-          doc.save(name);
-          resolve();
-        });
-      })
-    }
-    
+    render({geo: "rwa"});
     
   });
 

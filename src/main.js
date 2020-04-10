@@ -55,7 +55,7 @@ Promise.all(fetch_instructions).then(result => {
   
   const DOM = {};
   DOM.container = d3.select("#container");
-  DOM.backButton = DOM.container.append("div").attr("class", "back").append("a").text("back").on("click", ()=>{setUrlParams({})});
+//  DOM.backButton = DOM.container.append("div").attr("class", "back").append("a").text("back").on("click", ()=>{setUrlParams({})});
   DOM.nav = DOM.container.append("div").attr("class", "nav");
 
   DOM.nav_geos = DOM.nav.append("div").attr("class", "section");
@@ -64,7 +64,7 @@ Promise.all(fetch_instructions).then(result => {
   DOM.geosDownloadAll = DOM.nav.append("div").attr("class", "dl-all").text("Download all").on("click", () => downloadAll("geos"));
   
   DOM.summary = DOM.container.append("div").attr("class", "summary");
-  DOM.render = DOM.container.append("div").attr("class", "render");
+  DOM.render = d3.select(".reveal");
   
   let geosUnique = {};
   let templatesUnique = {};
@@ -91,9 +91,9 @@ Promise.all(fetch_instructions).then(result => {
   
 
   let params = getUrlParams();
-  let paramsEmpty = d3.keys(params).length == 0;
+  let paramsEmpty = d3.keys(params).length == 0 && false;
   DOM.nav.classed("invisible", !paramsEmpty);
-  DOM.backButton.classed("invisible", paramsEmpty);
+  //DOM.backButton.classed("invisible", paramsEmpty);
   DOM.summary.classed("invisible", !paramsEmpty);
   
   makeSummary({view: DOM.summary, geos, templates, ignos});
@@ -107,46 +107,25 @@ Promise.all(fetch_instructions).then(result => {
       geos,
       templates
       });
+    
+    
+      // More info https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+          controls: true,
+          progress: false,
+          center: true,
+          hash: true,
+          width: "100%",
+          height: "100%",
+          margin: 0,
+          minScale: 1,
+          maxScale: 1,
+          transition: 'none', // none/fade/slide/convex/concave/zoom
+      });
+    
   };
   
-  render(params);
-  
-  
-  function downloadAll() {
-    d3.keys(geosUnique).forEach(geo_id => {
-      makeReport({geo_id, ignos, view: DOM.render, graphs, geos, templates, data_sources, options})
-        .then((div)=>{
-          downloadReport(div, geo_id)
-            .then(()=>div.remove());
-        });
-    })
-  }
-  
-  
-  async function downloadReport(view, name){
-    let doc = new jsPDF("l","mm","a4");
-
-    
-    return await new Promise((resolve, reject) => {
-    
-      var promises = [];
-      view.selectAll(".page").each(function(){
-        promises.push(html2canvas(this));
-      })
-      
-      Promise.all(promises).then(pages => {
-
-        pages.forEach(page => {
-          var imgData = page.toDataURL('image/png');              
-          doc.addImage(imgData, 'PNG', 0, 0, 297, 210);
-          doc.addPage();
-        })
-        doc.save(name);
-        resolve();
-      })
-    })
-  }
-  
+  render({geo: "rwa"});
   
 })
 

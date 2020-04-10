@@ -123,47 +123,41 @@ export default function makeReport({view, geo_id="", template_id="", ignos=[], g
   ignos = ignos.filter(f => (f.geo==geo_id || !geo_id) && (f.template==template_id || !template_id));
   
   
-  let report = view.append("div").attr("class", "report");
+  let report = view.append("div").attr("class", "slides report");
   
   report
-    .append("div").attr("class","section")
-    .append("div").attr("class","cover page").each(function(){
+    .append("section").attr("class","cover page").each(function(){
       makeReportCoverPage({view: d3.select(this), geo_id, template_id, geos, templates});
     })
   
-  if (!template_id) report
-    .append("div").attr("class","section")
-    .append("div").attr("class","static page").each(function(){
+  if (STATIC_CONTENT1) report
+    .append("section").attr("class","static page").each(function(){
       makeReportStaticPage({view: d3.select(this), pagenum: 2, content: STATIC_CONTENT1});
     })  
-  if (!template_id) report
-    .append("div").attr("class","section")
-    .append("div").attr("class","static page").each(function(){
+  if (STATIC_CONTENT2) report
+    .append("section").attr("class","static page").each(function(){
       makeReportStaticPage({view: d3.select(this), pagenum: 3, content: STATIC_CONTENT2});
     })
 
   if(ignos.length) report
-    .append("div").attr("class","section").selectAll("div").data(ignos).enter()
-    .append("div").attr("class","question page").each(function(igno, index){
+    .selectAll(".question.page").data(ignos).enter()
+    .append("section").attr("class","question page").each(function(igno, index){
       let geo = geos.find(f => f.geo_id == igno.geo);
       let template = templates.find(f => f.template_id == igno.template);
       makeReportQuestionPage({view: d3.select(this), igno, geo, template, index, pagenum: index + 4});
     })
   
   if(ignos.length) report
-    .append("div").attr("class", "section")
-    .append("div").attr("class", "summary page").each(function(){
+    .append("section").attr("class", "summary page").each(function(){
       makeReportSummaryPage({view: d3.select(this), ignos, geos, templates, pagenum: ignos.length + 4});
     }) 
   
-  if (!template_id) report
-    .append("div").attr("class","section")
-    .append("div").attr("class","static page").each(function(){
+  if (STATIC_CONTENT3) report
+    .append("section").attr("class","static page").each(function(){
       makeReportStaticPage({view: d3.select(this), pagenum: ignos.length + 5, content: STATIC_CONTENT3});
     })
-  if (!template_id) report
-    .append("div").attr("class","section")
-    .append("div").attr("class","static page").each(function(){
+  if (STATIC_CONTENT4) report
+    .append("section").attr("class","static page").each(function(){
       makeReportStaticPage({view: d3.select(this), pagenum: ignos.length + 6, content: STATIC_CONTENT4});
     })
     

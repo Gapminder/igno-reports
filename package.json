@@ -28,8 +28,6 @@
   },
   "dependencies": {
     "d3": "^5.15.0",
-    "mobx": "^5.15.4",
-    "save-svg-as-png": "^1.4.17",
     "vizabi-ddfservice-reader": "^2.0.1"
   }
 }

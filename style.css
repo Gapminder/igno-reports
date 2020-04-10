@@ -76,7 +76,7 @@
 
 body {
   margin: 0 0 0 0;
-  padding: 2vw;
+  /*padding: 2vw;*/
 }
 a {
   color: blue;
@@ -96,8 +96,10 @@ a:hover {
 .render {
   position: relative;
 }
-.report {
+.slides.report {
   position: relative;
+  width: 100vw;
+  height: 100vw;
 }
 
 
@@ -105,13 +107,14 @@ a:hover {
 
 
 .report .page{
-  width: 96vw;
-  height: 68vw;
-  margin-bottom: 100px;
+  width: 100vw;
+  height: 100vh;
+  /*margin-bottom: 100px;*/
   position: relative;
   overflow: hidden;
   background-size: 100% 100%;
-  border: 1px solid black;
+  text-align: left;
+  /*border: 1px solid black;*/
 }
 
 .report .cover.page .logo {
